@@ -1,0 +1,145 @@
+openapi: 3.0.0
+info:
+  title: File Management Service
+  description: |
+      This service offers an API for uploading files and managing files within the platform.
+      
+      The service allows creating a file, updating a file and deleting files from the server. Furthermore the service
+      stores the files in such a way, that it will be accessible via the static files folder if they shall be publicly
+      available. For files which shall be protected, the service will create a download path within the service, to 
+      keep the file protected.
+  version: '1.0'
+
+tags:
+    - name: File Handling
+      description: Functions related to handling file uploads/downloads and modifications
+    - name: Miscellaneous
+      description: Miscellaneous functions which are used by internal functions
+
+servers:
+  - url: /
+    description: The default API endpoint for the WISdoM demo server
+
+components:
+    schemas:
+        fileInfo:
+            type: object
+            description: |
+                This object contains the information about a uploaded file which is stored in the system. It mostly 
+                contains metadata about the file.
+            properties:
+                fileName:
+                    type: string
+                    title: File Name
+                    description: |
+                        The name which has been set during the upload of the file
+                fileExtension:
+                    type: string
+                    title: File Extension
+                folderName:
+                    type: string
+                    title: Folder Name
+                    description: |
+                        The name of the folder which has been set during the upload of the file
+                tags:
+                    type: array
+                    items:
+                        type: string
+                    description: |
+                        Tags which have been added to the file during to upload of the file
+                description:
+                    type: string
+                    description: |
+                        A description which has been
+                isPrivate:
+                    type: boolean
+                    title: Private File Indicator
+                    description: |
+                        A indicator for the privacy status of the file. If a file is private it may not be accessed via
+                        the static files path and needs to be accessed via the file service
+
+paths:
+  /ping:
+    get:
+        tags:
+            - Miscellaneous
+        summary: Ping the service to test its reachability
+        description: The microservice will respond with a 204 No Content when pinging it
+        responses:
+            '204':
+                description: Response to the ping without any content
+  /:
+    put:
+        tags:
+            - File Handling
+        summary: Upload a new file
+        description: |
+            Upload a new file to the file system
+        parameters:
+            - in: header
+              name: Content-Type
+              description: The MIME type of the file which is being uploaded
+              required: true
+              schema:
+                  type: integer
+            - in: header
+              name: Content-Length
+              description: The Length of the file which has been uploaded
+              required: true
+              schema:
+                  type: integer
+            - in: header
+              name: X-File-Name
+              description: The name of the file which will be uploaded (without the file extension)
+              required: true
+              schema:
+                  type: string
+            - in: header
+              name: X-Folder-ID
+              description: |
+                  The UUID of the folder into which the file shall be uploaded if the folder does not exist the service
+                  will place the file into the root directory
+              required: false
+              schema:
+                type: string
+                default: null
+            - in: header
+              name: X-Private-File
+              description: Sets if the uploaded file shall be a private file or a public file
+              required: true
+              schema:
+                  type: boolean
+                  default: true
+        responses:
+            201:
+                description: |
+                    The file was created successfully. The Content-Location header is inferred from the
+                headers:
+                    Content-Type:
+                        description: The content type which was set during the upload
+                        required: true
+                        schema:
+                            type: string
+                    Content-Location:
+                        description: The location of the uploaded file under which it will be downloadable.
+                        required: true
+                        schema:
+                            type: string
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/fileInfo'
+            400:
+                description: |
+                    The upload request was malformed and could not be acted upon
+            409:
+                description: |
+                    The file you tried to upload was already uploaded once
+            411:
+                description: |
+                    Your request is missing the `Content-Length` header which is required to check if the server has 
+                    enough remaining storage available
+            507:
+                description: |
+                    The uploaded file cannot be stored on the server since there is not enough free space for it.
+
